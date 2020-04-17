@@ -1,0 +1,36 @@
+library(tidyverse)
+
+df <- data %>%
+  select(26,posteam, home_team, away_team,home_score, away_score, game_half, 2,258,6,9,12,13,16,18,19,23,25,27,28,29,30:33,34:36,49,51:55,88,119,136,155,164, 273, 277) %>%
+  #what if we exclude the 4th q to limit successful garbage time by loser?
+  filter(qtr < 4) %>%
+  group_by(game_id, posteam) %>%
+  mutate(score_diff_abs = abs(score_differential)) %>%
+  mutate(cum_success = cummean(success)) %>%
+  mutate(cum_pass_success = cumsum(success * (play_type == 'pass')) / cumsum(play_type == 'pass')) %>%
+  mutate(cum_run_success = cumsum(success * (play_type == 'run')) / cumsum(play_type == 'run')) %>%
+  mutate(winner = case_when(home_team == posteam & home_score > away_score ~ 1,
+                            home_team != posteam & away_score > home_score ~ 1,
+                            TRUE ~ 0 ))
+
+#winning team success rates
+df %>%
+  filter(winner == 1) %>%
+  group_by(game_id, posteam) %>%
+  drop_na(cum_success) %>%
+  slice(n()) %>%
+  ungroup() %>%
+  summarise(success = last(cum_success),
+            pass_success = last(cum_pass_success),
+            run_success = last(cum_run_success))
+  
+#losing team success rates
+df %>%
+  filter(winner == 0) %>%
+  group_by(game_id, posteam) %>%
+  drop_na(cum_success) %>%
+  slice(n()) %>%
+  ungroup() %>%
+  summarise(success = last(cum_success),
+            pass_success = last(cum_pass_success),
+            run_success = last(cum_run_success))
